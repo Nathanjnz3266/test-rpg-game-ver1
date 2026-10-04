@@ -69,6 +69,7 @@ export class CombatSystem {
         if (playerDir.dot(toEnemy) > 0.4) {
           e.takeDamage(baseDamage, isCrit);
           player.addUltimateCharge(4);
+          eventBus.emit('CAMERA_SHAKE', 0.1);
         }
       }
     });
@@ -80,6 +81,7 @@ export class CombatSystem {
         if (playerDir.dot(toBoss) > 0.3) {
           boss.takeDamage(baseDamage, isCrit);
           player.addUltimateCharge(6);
+          eventBus.emit('CAMERA_SHAKE', 0.2);
         }
       }
     }
@@ -142,6 +144,7 @@ export class CombatSystem {
 
     audioEngine.playSfx(skill.isUltimate ? 'BOSS_ROAR' : isMagic ? 'FIREBALL' : 'SLASH');
     this.spawnMagicVfx(player.mesh.position, skill.vfx);
+    eventBus.emit('CAMERA_SHAKE', skill.isUltimate ? 0.6 : 0.25);
 
     const aoeRadius = skill.aoe || skill.range || 4.0;
     enemies.forEach(e => {

@@ -1,4 +1,7 @@
 import * as THREE from 'three';
+import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
 import { REGIONS } from '../data/regions.js';
 import { ModelBuilder } from '../entities/3d/ModelBuilder.js';
 import { Environment } from './Environment.js';
@@ -26,6 +29,17 @@ export class WorldManager {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 
+    // Post-Processing for Premium Look
+    this.composer = new EffectComposer(this.renderer);
+    const renderPass = new RenderPass(this.scene, this.camera);
+    this.composer.addPass(renderPass);
+
+    this.bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+    this.bloomPass.threshold = 0.3;
+    this.bloomPass.strength = 1.0;
+    this.bloomPass.radius = 0.8;
+    this.composer.addPass(this.bloomPass);
+
     // Environment
     this.environment = new Environment(this.scene);
 
@@ -43,6 +57,10 @@ export class WorldManager {
     this.initTownBuildings();
     this.initShrinesAndPortals();
     this.initNPCs();
+
+    // Camera Shake state
+    this.cameraShake = 0;
+    eventBus.on('CAMERA_SHAKE', (intensity) => { this.cameraShake = intensity; });
 
     window.addEventListener('resize', () => this.onWindowResize());
   }
@@ -186,10 +204,20 @@ export class WorldManager {
     const offsetY = Math.sin(this.cameraPitch) * this.cameraDistance;
     const offsetZ = Math.cos(this.cameraYaw) * Math.cos(this.cameraPitch) * this.cameraDistance;
 
+    // Apply Camera Shake
+    let sx = 0, sy = 0, sz = 0;
+    if (this.cameraShake > 0) {
+      sx = (Math.random() - 0.5) * this.cameraShake;
+      sy = (Math.random() - 0.5) * this.cameraShake;
+      sz = (Math.random() - 0.5) * this.cameraShake;
+      this.cameraShake -= 0.015;
+      if (this.cameraShake < 0) this.cameraShake = 0;
+    }
+
     this.camera.position.set(
-      targetLookAt.x + offsetX,
-      targetLookAt.y + offsetY,
-      targetLookAt.z + offsetZ
+      targetLookAt.x + offsetX + sx,
+      targetLookAt.y + offsetY + sy,
+      targetLookAt.z + offsetZ + sz
     );
 
     this.camera.lookAt(targetLookAt);
@@ -208,12 +236,13 @@ export class WorldManager {
       this.dungeonPortal.rotation.z += 0.02;
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 
   onWindowResize() {
     this.camera.aspect = window.innerWidth / window.innerHeight;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.composer.setSize(window.innerWidth, window.innerHeight);
   }
 }

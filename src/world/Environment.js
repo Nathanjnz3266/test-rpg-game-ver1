@@ -23,6 +23,27 @@ export class Environment {
     // Weather Particles (Rain)
     this.rainParticles = null;
     this.initRain();
+    
+    // Fireflies / Magic Dust for Premium Look
+    this.fireflies = null;
+    this.initFireflies();
+  }
+
+  initFireflies() {
+    const count = 350;
+    const geo = new THREE.BufferGeometry();
+    const positions = new Float32Array(count * 3);
+    
+    for (let i = 0; i < count; i++) {
+      positions[i * 3] = (Math.random() - 0.5) * 70;
+      positions[i * 3 + 1] = Math.random() * 8 + 0.5;
+      positions[i * 3 + 2] = (Math.random() - 0.5) * 70;
+    }
+    
+    geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+    const mat = new THREE.PointsMaterial({ color: 0xffd700, size: 0.18, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending });
+    this.fireflies = new THREE.Points(geo, mat);
+    this.scene.add(this.fireflies);
   }
 
   initRain() {
@@ -80,6 +101,19 @@ export class Environment {
       this.rainParticles.geometry.attributes.position.needsUpdate = true;
     } else {
       this.rainParticles.visible = false;
+    }
+
+    // Fireflies update
+    if (this.fireflies) {
+      this.fireflies.position.copy(playerPos);
+      const time = Date.now() * 0.001;
+      const posArr = this.fireflies.geometry.attributes.position.array;
+      for (let i = 0; i < posArr.length / 3; i++) {
+        posArr[i * 3 + 1] += Math.sin(time * 2 + i) * 0.015; // Float up and down
+        posArr[i * 3] += Math.cos(time + i) * 0.005; // Drift sideways
+      }
+      this.fireflies.geometry.attributes.position.needsUpdate = true;
+      this.fireflies.material.opacity = isNight ? 0.9 : 0.1; // Glow brighter at night
     }
 
     eventBus.emit('TIME_WEATHER_UPDATE', {
